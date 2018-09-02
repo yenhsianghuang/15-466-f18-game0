@@ -75,18 +75,27 @@ struct Game {
 
 	glm::uvec2 cursor = glm::vec2(1,1);
     std::vector< glm::uvec2 > cursors = std::vector< glm::uvec2 > {
-        glm::vec2(0,0),
+        //glm::vec2(0,0),
         glm::vec2(1,0),
         glm::vec2(2,0),
+        //glm::vec2(3,0)
+        //glm::vec2(0,1),
+        glm::vec2(1,1),
+        //glm::vec2(2,1),
+        //glm::vec2(3,1),
+        //glm::vec2(0,2),
+        glm::vec2(1,2),
+        //glm::vec2(2,2),
+        glm::vec2(3,2)
+    };
+    std::vector< glm::uvec2 > eggs = std::vector< glm::uvec2 > {
+        glm::vec2(0,0),
         glm::vec2(3,0),
         glm::vec2(0,1),
-        glm::vec2(1,1),
-        glm::vec2(2,1),
-        glm::vec2(3,1),
-        glm::vec2(0,2),
-        glm::vec2(1,2),
-        glm::vec2(2,2),
-        glm::vec2(3,2)
+        glm::vec2(2,1)
+        //glm::vec2(3,1),
+        //glm::vec2(0,2),
+        //glm::vec2(2,2),
     };
 
 	struct {
