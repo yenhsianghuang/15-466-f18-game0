@@ -174,7 +174,7 @@ Game::Game() {
 			return f->second;
 		};
 		tile_mesh = lookup("Tile");
-		cursor_mesh = lookup("Cursor");
+		cursor_mesh = lookup("Cube");  // I Change the loading target
 		doll_mesh = lookup("Doll");
 		egg_mesh = lookup("Egg");
 		cube_mesh = lookup("Cube");
@@ -290,7 +290,8 @@ void Game::update(float elapsed) {
 	}
 	if (controls.roll_down) {
 		dr = glm::angleAxis(-amt, glm::vec3(1.0f, 0.0f, 0.0f)) * dr;
-	}
+    }
+    //Only updates elements at the same row or column of the cursor.
 	if (dr != glm::quat()) {
 		for (uint32_t x = 0; x < board_size.x; ++x) {
 			glm::quat &r = board_rotations[cursor.y * board_size.x + x];

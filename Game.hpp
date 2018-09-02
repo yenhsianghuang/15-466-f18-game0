@@ -58,21 +58,36 @@ struct Game {
 		GLsizei count = 0;
 	};
 
-	Mesh tile_mesh;
-	Mesh cursor_mesh;
-	Mesh doll_mesh;
-	Mesh egg_mesh;
-	Mesh cube_mesh;
+    Mesh tile_mesh;
+    Mesh cursor_mesh;
+    Mesh doll_mesh;
+    Mesh egg_mesh;
+    Mesh cube_mesh;
 
 	GLuint meshes_for_simple_shading_vao = -1U; //vertex array object that describes how to connect the meshes_vbo to the simple_shading_program
 
 	//------- game state -------
 
-	glm::uvec2 board_size = glm::uvec2(5,4);
+	//glm::uvec2 board_size = glm::uvec2(5,4);  // change board size
+	glm::uvec2 board_size = glm::uvec2(4,4);
 	std::vector< Mesh const * > board_meshes;
 	std::vector< glm::quat > board_rotations;
 
-	glm::uvec2 cursor = glm::vec2(0,0);
+	glm::uvec2 cursor = glm::vec2(1,1);
+    std::vector< glm::uvec2 > cursors = std::vector< glm::uvec2 > {
+        glm::vec2(0,0),
+        glm::vec2(1,0),
+        glm::vec2(2,0),
+        glm::vec2(3,0),
+        glm::vec2(0,1),
+        glm::vec2(1,1),
+        glm::vec2(2,1),
+        glm::vec2(3,1),
+        glm::vec2(0,2),
+        glm::vec2(1,2),
+        glm::vec2(2,2),
+        glm::vec2(3,2)
+    };
 
 	struct {
 		bool roll_left = false;
