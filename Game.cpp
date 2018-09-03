@@ -174,9 +174,9 @@ Game::Game() {
 			return f->second;
 		};
 		tile_mesh = lookup("Tile");
-		cursor_mesh = lookup("Cube");  // I Change the loading target
+		blackpiece_mesh = lookup("Cube");  // I Change the loading target
         //doll_mesh = lookup("Doll");
-        egg_mesh = lookup("Egg");
+        whitepiece_mesh = lookup("Egg");
         //cube_mesh = lookup("Cube");
 	}
 
@@ -204,7 +204,7 @@ Game::Game() {
 	//set up game board with meshes and rolls:
 	//board_meshes.reserve(board_size.x * board_size.y);
 	board_rotations.reserve(board_size.x * board_size.y);
-	//std::mt19937 mt(0xbead1234);
+    //std::mt19937 mt(0xbead1234);
 
     //std::vector< Mesh const * > meshes{ &doll_mesh, &egg_mesh, &cube_mesh };
 
@@ -212,6 +212,32 @@ Game::Game() {
         //board_meshes.emplace_back(meshes[mt()%meshes.size()]);
 		board_rotations.emplace_back(glm::quat());
 	}
+
+    whitepieces.reserve(board_size.x * board_size.y / 2);
+    blackpieces.reserve(board_size.x * board_size.y / 2);
+    for (uint32_t r = 0; r < 4; ++r) {
+        for (uint32_t c = 0; c < 4; ++c) {
+            auto piece = mt() % 3;  //Empty, Black, White
+            if (piece == White) {
+                whitepieces.emplace_back(glm::vec2(r,c));
+            } else if (piece == Black) {
+                blackpieces.emplace_back(glm::vec2(r,c));
+            }
+        }
+    }
+
+	//----------------
+    //set up board_state
+    set_board_state();
+    //memset(board_state, Empty, sizeof(board_state));
+    //for (auto& b : blackpieces) {
+        //uint32_t row = 3 - b.y, column = b.x;
+        //board_state[row][column] = Black;
+    //}
+    //for (auto& w : whitepieces) {
+        //uint32_t row = 3 - w.y, column = w.x;
+        //board_state[row][column] = White;
+    //}
 }
 
 Game::~Game() {
@@ -252,45 +278,17 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 	}
     */
 
-    auto updatePieces = [&](int board_state[4][4]) {
-        uint32_t cursorIndex = 0;
-        uint32_t eggIndex = 0;
-        for (uint32_t row = 0; row < 4; ++row) {
-            for (uint32_t column = 0; column < 4; ++column) {
-                if (board_state[row][column] == 1) {  // cursors
-                    cursors[cursorIndex].x = column;
-                    cursors[cursorIndex].y = 3 - row;
-                    ++cursorIndex;
-                } else if (board_state[row][column] == 2) {  // eggs
-                    eggs[eggIndex].x = column;
-                    eggs[eggIndex].y = 3 - row;
-                    ++eggIndex;
-                }
-            }
-        }
-        cursors.resize(cursorIndex);
-        eggs.resize(eggIndex);
-    };
-
-    //auto printBoard = [&] (int board_state[4][4]) {
-        //for (uint32_t row = 0; row < 4; ++row) {
-            //for (uint32_t column = 0; column < 4; ++column)
-                //std::cout << board_state[row][column] << " ";
-            //std::cout << std::endl;
-        //}
-    //};
-
-	//move cursor on L/R/U/D press:
+	//move pieces on L/R/U/D press:
 	if (evt.type == SDL_KEYDOWN && evt.key.repeat == 0) {
         //set board_state
-        int board_state[4][4] = {};
-        for (auto& c : cursors) {  // 1 for cursors
-            uint32_t row = 3 - c.y, column = c.x;
-            board_state[row][column] = 1;
+        memset(board_state, Empty, sizeof(board_state));
+        for (auto& b : blackpieces) {  // 1 for blackpieces
+            uint32_t row = 3 - b.y, column = b.x;
+            board_state[row][column] = Black;
         }
-        for (auto& e : eggs) {  // 2 for eggs
-            uint32_t row = 3 - e.y, column = e.x;
-            board_state[row][column] = 2;
+        for (auto& w : whitepieces) {  // 2 for whitepieces
+            uint32_t row = 3 - w.y, column = w.x;
+            board_state[row][column] = White;
         }
 
         {  //powerful slide (remove duplicate objects in the same row/column)
@@ -298,14 +296,14 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
                 if (evt.key.keysym.scancode == SDL_SCANCODE_LEFT ||
                     evt.key.keysym.scancode == SDL_SCANCODE_RIGHT) {  //horizontal powerful slide
                     for (uint32_t r = 0; r < 4; ++r) {
-                        int prevPiece = 0;
+                        Piece prevPiece = Empty;
                         uint32_t c = 0;
-                        while (prevPiece == 0 && c < 4)
+                        while (prevPiece == Empty && c < 4)
                             prevPiece = board_state[r][c++];
                         for (; c < 4; ++c) {
-                            if (board_state[r][c] != 0) {
+                            if (board_state[r][c] != Empty) {
                                 if (board_state[r][c] == prevPiece) {
-                                    board_state[r][c] = 0;
+                                    board_state[r][c] = Empty;
                                 } else {
                                     prevPiece = board_state[r][c];
                                 }
@@ -315,14 +313,14 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
                 } else if (evt.key.keysym.scancode == SDL_SCANCODE_UP ||
                            evt.key.keysym.scancode == SDL_SCANCODE_DOWN) {  //vertical powerful slide
                     for (uint32_t c = 0; c < 4; ++c) {
-                        int prevPiece = 0;
+                        Piece prevPiece = Empty;
                         uint32_t r = 0;
-                        while (prevPiece == 0 && r < 4)
+                        while (prevPiece == Empty && r < 4)
                             prevPiece = board_state[r++][c];
                         for (; r < 4; ++r) {
-                            if (board_state[r][c] != 0) {
+                            if (board_state[r][c] != Empty) {
                                 if (board_state[r][c] == prevPiece) {
-                                    board_state[r][c] = 0;
+                                    board_state[r][c] = Empty;
                                 } else {
                                     prevPiece = board_state[r][c];
                                 }
@@ -337,42 +335,54 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
             if (evt.key.keysym.scancode == SDL_SCANCODE_LEFT) {
                 for (uint32_t r = 0; r < 4; ++r) {
                     uint32_t head = 0;  // head of row r
-                    while (board_state[r][head] != 0 && head < 4) ++head;
-                    for (uint32_t c = head + 1; c < 4; ++c)
-                        if (board_state[r][c] != 0 && c != head && board_state[r][head] == 0)
+                    while (board_state[r][head] != Empty && head < 4) {
+                        ++head;
+                    }
+                    for (uint32_t c = head + 1; c < 4; ++c) {
+                        if (board_state[r][c] != Empty && c != head && board_state[r][head] == Empty) {
                             std::swap(board_state[r][head++], board_state[r][c]);
+                        }
+                    }
                 }
-                updatePieces(board_state);
                 return true;
             } else if (evt.key.keysym.scancode == SDL_SCANCODE_RIGHT) {
                 for (uint32_t r = 4; r-- > 0; ) {  //unsigned reverse index
                     uint32_t head = 3;
-                    while (board_state[r][head] != 0 && head > 0) --head;
-                    for (uint32_t c = head; c-- > 0; )
-                        if (board_state[r][c] != 0 && c != head && board_state[r][head] == 0)
+                    while (board_state[r][head] != Empty && head > 0) {
+                        --head;
+                    }
+                    for (uint32_t c = head; c-- > 0; ) {
+                        if (board_state[r][c] != Empty && c != head && board_state[r][head] == Empty) {
                             std::swap(board_state[r][head--], board_state[r][c]);
+                        }
+                    }
                 }
-                updatePieces(board_state);
                 return true;
             } else if (evt.key.keysym.scancode == SDL_SCANCODE_UP) {
                 for (uint32_t c = 0; c < 4; ++c) {
                     uint32_t head = 0;
-                    while (board_state[head][c] != 0 && head < 4) ++head;
-                    for (uint32_t r = head + 1; r < 4; ++r)
-                        if (board_state[r][c] != 0 && r != head && board_state[head][c] == 0)
+                    while (board_state[head][c] != Empty && head < 4) {
+                        ++head;
+                    }
+                    for (uint32_t r = head + 1; r < 4; ++r) {
+                        if (board_state[r][c] != Empty && r != head && board_state[head][c] == Empty) {
                             std::swap(board_state[head++][c], board_state[r][c]);
+                        }
+                    }
                 }
-                updatePieces(board_state);
                 return true;
             } else if (evt.key.keysym.scancode == SDL_SCANCODE_DOWN) {
                 for (uint32_t c = 4; c-- > 0; ) {
                     uint32_t head = 3;
-                    while (board_state[head][c] != 0 && head > 0) --head;
-                    for (uint32_t r = head; r-- > 0; )
-                        if (board_state[r][c] != 0 && r != head && board_state[head][c] == 0)
+                    while (board_state[head][c] != Empty && head > 0) {
+                        --head;
+                    }
+                    for (uint32_t r = head; r-- > 0; ) {
+                        if (board_state[r][c] != Empty && r != head && board_state[head][c] == Empty) {
                             std::swap(board_state[head--][c], board_state[r][c]);
+                        }
+                    }
                 }
-                updatePieces(board_state);
                 return true;
             }
         }
@@ -403,8 +413,10 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 	return false;
 }
 
+// update is now useless
 void Game::update(float elapsed) {
 	//if the roll keys are pressed, rotate everything on the same row or column as the cursor:
+    /*
 	glm::quat dr = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 	float amt = elapsed * 1.0f;
 	if (controls.roll_left) {
@@ -432,6 +444,31 @@ void Game::update(float elapsed) {
 			}
 		}
 	}
+    */
+
+    // update positions of black/white pieces
+    uint32_t blackpieceIdx = 0;
+    uint32_t whitepieceIdx = 0;
+    for (uint32_t row = 0; row < 4; ++row) {
+        for (uint32_t column = 0; column < 4; ++column) {
+            if (board_state[row][column] == Black) {  // blackpieces
+                blackpieces[blackpieceIdx].x = column;
+                blackpieces[blackpieceIdx].y = 3 - row;
+                ++blackpieceIdx;
+            } else if (board_state[row][column] == White) {  // whitepieces
+                whitepieces[whitepieceIdx].x = column;
+                whitepieces[whitepieceIdx].y = 3 - row;
+                ++whitepieceIdx;
+            }
+        }
+    }
+    blackpieces.resize(blackpieceIdx);
+    whitepieces.resize(whitepieceIdx);
+
+    // check if player wins
+    if (blackpieces.size() == 1 && whitepieces.size() == 1) {
+        game_state = Win;
+    }
 }
 
 void Game::draw(glm::uvec2 drawable_size) {
@@ -508,23 +545,23 @@ void Game::draw(glm::uvec2 drawable_size) {
 			//);
 		}
 	}
-    for (auto& c : cursors) {
-        draw_mesh(cursor_mesh,
+    for (auto& b : blackpieces) {
+        draw_mesh(blackpiece_mesh,
             glm::mat4(
                 1.0f, 0.0f, 0.0f, 0.0f,
                 0.0f, 1.0f, 0.0f, 0.0f,
                 0.0f, 0.0f, 1.0f, 0.0f,
-                c.x+0.5f, c.y+0.5f, 0.0f, 1.0f
+                b.x+0.5f, b.y+0.5f, 0.0f, 1.0f
             )
         );
     }
-    for (auto& e : eggs) {
-        draw_mesh(egg_mesh,
+    for (auto& w : whitepieces) {
+        draw_mesh(whitepiece_mesh,
             glm::mat4(
                 1.0f, 0.0f, 0.0f, 0.0f,
                 0.0f, 1.0f, 0.0f, 0.0f,
                 0.0f, 0.0f, 1.0f, 0.0f,
-                e.x+0.5f, e.y+0.5f, 0.0f, 1.0f
+                w.x+0.5f, w.y+0.5f, 0.0f, 1.0f
             )
         );
     }
@@ -541,6 +578,38 @@ void Game::draw(glm::uvec2 drawable_size) {
 	glUseProgram(0);
 
 	GL_ERRORS();
+}
+
+void Game::generate() {
+    std::cout << "generate" << std::endl;
+    blackpieces.clear();
+    whitepieces.clear();
+
+    for (uint32_t r = 0; r < 4; ++r) {
+        for (uint32_t c = 0; c < 4; ++c) {
+            auto piece = mt() % 3;  //Empty, Black, White
+            if (piece == White) {
+                whitepieces.emplace_back(glm::vec2(r,c));
+            } else if (piece == Black) {
+                blackpieces.emplace_back(glm::vec2(r,c));
+            }
+        }
+    }
+
+    set_board_state();
+    game_state = GoOn;
+}
+
+void Game::set_board_state() {
+    memset(board_state, Empty, sizeof(board_state));
+    for (auto& b : blackpieces) {
+        uint32_t row = 3 - b.y, column = b.x;
+        board_state[row][column] = Black;
+    }
+    for (auto& w : whitepieces) {
+        uint32_t row = 3 - w.y, column = w.x;
+        board_state[row][column] = White;
+    }
 }
 
 

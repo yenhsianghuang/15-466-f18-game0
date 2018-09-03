@@ -23,7 +23,7 @@
 int main(int argc, char **argv) {
 	struct {
 		//TODO: this is where you set the title and size of your game window
-		std::string title = "TODO: Game Title";
+		std::string title = "Sliding Ball";
 		glm::uvec2 size = glm::uvec2(640, 400);
 	} config;
 
@@ -102,64 +102,73 @@ int main(int argc, char **argv) {
 	//On non-highDPI displays, window_size will always equal drawable_size.
 	auto on_resize = [&](){
 		int w,h;
+        //get the size of the window in layout pixels:
 		SDL_GetWindowSize(window, &w, &h);
 		window_size = glm::uvec2(w, h);
+
+        //get the size of the window in display pixels:
 		SDL_GL_GetDrawableSize(window, &w, &h);
 		drawable_size = glm::uvec2(w, h);
+
+        //make sure that OpenGL Viewport matches the window size in display pixels:
 		glViewport(0, 0, drawable_size.x, drawable_size.y);
 	};
 	on_resize();
 
 	//This will loop until the game object is set to null:
 	while (game) {
-		//every pass through the game loop creates one frame of output
-		//  by performing three steps:
+        if (game->game_state == Game::Win) {  //handle win
+            game->generate();  //generate new round
+        } else {  //go on
+            //every pass through the game loop creates one frame of output
+            //  by performing three steps:
 
-		{ //(1) process any events that are pending
-			static SDL_Event evt;
-			while (SDL_PollEvent(&evt) == 1) {
-				//handle resizing:
-				if (evt.type == SDL_WINDOWEVENT && evt.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-					on_resize();
-				}
-				//handle input:
-				if (game && game->handle_event(evt, window_size)) {
-					// mode handled it; great
-				} else if (evt.type == SDL_QUIT) {
-					game.reset(); //done: deallocate game
-					break;
-				}
-			}
-			if (!game) break;
-		}
+            { //(1) process any events that are pending
+                static SDL_Event evt;
+                while (SDL_PollEvent(&evt) == 1) {
+                    //handle resizing:
+                    if (evt.type == SDL_WINDOWEVENT && evt.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                        on_resize();
+                    }
+                    //handle input:
+                    if (game && game->handle_event(evt, window_size)) {
+                        // mode handled it; great
+                    } else if (evt.type == SDL_QUIT) {
+                        game.reset(); //done: deallocate game
+                        break;
+                    }
+                }
+                if (!game) break;
+            }
 
-		{ //(2) call the game's "update" function to deal with elapsed time:
-			auto current_time = std::chrono::high_resolution_clock::now();
-			static auto previous_time = current_time;
-			float elapsed = std::chrono::duration< float >(current_time - previous_time).count();
-			previous_time = current_time;
+            { //(2) call the game's "update" function to deal with elapsed time:
+                auto current_time = std::chrono::high_resolution_clock::now();
+                static auto previous_time = current_time;
+                float elapsed = std::chrono::duration< float >(current_time - previous_time).count();
+                previous_time = current_time;
 
-			//if frames are taking a very long time to process,
-			//lag to avoid spiral of death:
-			elapsed = std::min(0.1f, elapsed);
+                //if frames are taking a very long time to process,
+                //lag to avoid spiral of death:
+                elapsed = std::min(0.1f, elapsed);
 
-			game->update(elapsed);
-			if (!game) break;
-		}
+                game->update(elapsed);
+                if (!game) break;
+            }
+        }
 
-		{ //(3) call the game's "draw" function to produce output:
-			//clear the depth+color buffers and set some default state:
-			glClearColor(0.5, 0.5, 0.5, 0.0);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glEnable(GL_DEPTH_TEST);
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        { //(3) call the game's "draw" function to produce output:
+            //clear the depth+color buffers and set some default state:
+            glClearColor(0.5, 0.5, 0.5, 0.0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glEnable(GL_DEPTH_TEST);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-			game->draw(drawable_size);
-		}
+            game->draw(drawable_size);
+        }
 
-		//Finally, wait until the recently-drawn frame is shown before doing it all again:
-		SDL_GL_SwapWindow(window);
+        //Finally, wait until the recently-drawn frame is shown before doing it all again:
+        SDL_GL_SwapWindow(window);
 	}
 
 
