@@ -1,5 +1,5 @@
 # Game Information
-(Note: fill in this portion with information about your game.)
+Sliding Ball is an implementation of the [Sliding Ball](http://graphics.cs.cmu.edu/courses/15-466-f18/game0-designs/guanghay/). Most of the features are built as described in the document. One big difference is that when the player applies normal or powerful slide, all balls (instead of balls in a single line) are affected. (I would like to add a number on right side of the window, showing how many steps the player has used. Still trying to get texts work.)
 
 Title: Sliding Ball
 
