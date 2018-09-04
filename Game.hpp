@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <random>
+#include <chrono>
 
 // The 'Game' struct holds all of the game-relevant state,
 // and is called by the main loop.
@@ -29,9 +30,8 @@ struct Game {
 	//draw is called after update:
 	void draw(glm::uvec2 drawable_size);
 
-    //generate new board
-    void generate();
-    void set_board_state();
+    //generate new stage
+    void generate_new_stage();
 
 
 	//------- opengl resources -------
@@ -66,9 +66,7 @@ struct Game {
 
     Mesh tile_mesh;
     Mesh blackpiece_mesh;
-    //Mesh doll_mesh;
     Mesh whitepiece_mesh;
-    //Mesh cube_mesh;
 
 	GLuint meshes_for_simple_shading_vao = -1U; //vertex array object that describes how to connect the meshes_vbo to the simple_shading_program
 
@@ -76,30 +74,14 @@ struct Game {
     enum Piece { Empty, Black, White };
     enum GameState { Win, GoOn };
 
-	//glm::uvec2 board_size = glm::uvec2(5,4);  // change board size
 	glm::uvec2 board_size = glm::uvec2(4,4);
     Piece board_state[4][4];
     GameState game_state = GoOn;
-    auto mt = std::mt19937(0xbead1234);  //random engine
+    std::mt19937 mt = std::mt19937(std::chrono::high_resolution_clock::now().time_since_epoch().count());  //random engine
 
 	std::vector< Mesh const * > board_meshes;
 	std::vector< glm::quat > board_rotations;
-
-	//glm::uvec2 cursor = glm::vec2(1,1);
     std::vector< glm::uvec2 > blackpieces, whitepieces;
-
-    //std::vector< glm::uvec2 > blackpieces = std::vector< glm::uvec2 > {
-        //glm::vec2(1,0),
-        //glm::vec2(1,1),
-        //glm::vec2(1,2),
-        //glm::vec2(3,2)
-    //};
-    //std::vector< glm::uvec2 > whitepieces = std::vector< glm::uvec2 > {
-        //glm::vec2(0,0),
-        //glm::vec2(3,0),
-        //glm::vec2(0,1),
-        //glm::vec2(2,1)
-    //};
 
 	struct {
 		bool roll_left = false;

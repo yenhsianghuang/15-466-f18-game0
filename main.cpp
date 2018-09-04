@@ -117,8 +117,8 @@ int main(int argc, char **argv) {
 
 	//This will loop until the game object is set to null:
 	while (game) {
-        if (game->game_state == Game::Win) {  //handle win
-            game->generate();  //generate new round
+        if (game->game_state == Game::Win) {  //player win, generate new game
+            game->generate_new_stage();
         } else {  //go on
             //every pass through the game loop creates one frame of output
             //  by performing three steps:

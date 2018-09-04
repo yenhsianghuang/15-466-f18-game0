@@ -10,7 +10,7 @@
 #include <fstream>
 #include <map>
 #include <cstddef>
-#include <random>
+//#include <random>
 
 //helper defined later; throws if shader compilation fails:
 static GLuint compile_shader(GLenum type, std::string const &source);
@@ -174,10 +174,8 @@ Game::Game() {
 			return f->second;
 		};
 		tile_mesh = lookup("Tile");
-		blackpiece_mesh = lookup("Cube");  // I Change the loading target
-        //doll_mesh = lookup("Doll");
-        whitepiece_mesh = lookup("Egg");
-        //cube_mesh = lookup("Cube");
+        blackpiece_mesh = lookup("blackpiece");  // I Change the loading target
+        whitepiece_mesh = lookup("whitepiece");
 	}
 
 	{ //create vertex array object to hold the map from the mesh vertex buffer to shader program attributes:
@@ -202,42 +200,16 @@ Game::Game() {
 
 	//----------------
 	//set up game board with meshes and rolls:
-	//board_meshes.reserve(board_size.x * board_size.y);
-	board_rotations.reserve(board_size.x * board_size.y);
-    //std::mt19937 mt(0xbead1234);
-
-    //std::vector< Mesh const * > meshes{ &doll_mesh, &egg_mesh, &cube_mesh };
+    uint32_t numel = board_size.x * board_size.y;
+	board_rotations.reserve(numel);
+    whitepieces.reserve(numel);
+    blackpieces.reserve(numel);
 
 	for (uint32_t i = 0; i < board_size.x * board_size.y; ++i) {
-        //board_meshes.emplace_back(meshes[mt()%meshes.size()]);
 		board_rotations.emplace_back(glm::quat());
 	}
 
-    whitepieces.reserve(board_size.x * board_size.y / 2);
-    blackpieces.reserve(board_size.x * board_size.y / 2);
-    for (uint32_t r = 0; r < 4; ++r) {
-        for (uint32_t c = 0; c < 4; ++c) {
-            auto piece = mt() % 3;  //Empty, Black, White
-            if (piece == White) {
-                whitepieces.emplace_back(glm::vec2(r,c));
-            } else if (piece == Black) {
-                blackpieces.emplace_back(glm::vec2(r,c));
-            }
-        }
-    }
-
-	//----------------
-    //set up board_state
-    set_board_state();
-    //memset(board_state, Empty, sizeof(board_state));
-    //for (auto& b : blackpieces) {
-        //uint32_t row = 3 - b.y, column = b.x;
-        //board_state[row][column] = Black;
-    //}
-    //for (auto& w : whitepieces) {
-        //uint32_t row = 3 - w.y, column = w.x;
-        //board_state[row][column] = White;
-    //}
+    generate_new_stage();
 }
 
 Game::~Game() {
@@ -259,72 +231,45 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
 		return false;
 	}
 
-	//handle tracking the state of WSAD for roll control:
-    /* No need to roll in my game
-	if (evt.type == SDL_KEYDOWN || evt.type == SDL_KEYUP) {
-		if (evt.key.keysym.scancode == SDL_SCANCODE_W) {
-			controls.roll_up = (evt.type == SDL_KEYDOWN);
-			return true;
-		} else if (evt.key.keysym.scancode == SDL_SCANCODE_S) {
-			controls.roll_down = (evt.type == SDL_KEYDOWN);
-			return true;
-		} else if (evt.key.keysym.scancode == SDL_SCANCODE_A) {
-			controls.roll_left = (evt.type == SDL_KEYDOWN);
-			return true;
-		} else if (evt.key.keysym.scancode == SDL_SCANCODE_D) {
-			controls.roll_right = (evt.type == SDL_KEYDOWN);
-			return true;
-		}
-	}
-    */
-
-	//move pieces on L/R/U/D press:
+	//handling arrow keys and R press:
 	if (evt.type == SDL_KEYDOWN && evt.key.repeat == 0) {
-        //set board_state
-        memset(board_state, Empty, sizeof(board_state));
-        for (auto& b : blackpieces) {  // 1 for blackpieces
-            uint32_t row = 3 - b.y, column = b.x;
-            board_state[row][column] = Black;
-        }
-        for (auto& w : whitepieces) {  // 2 for whitepieces
-            uint32_t row = 3 - w.y, column = w.x;
-            board_state[row][column] = White;
+        //press R to generate a new game
+        if (evt.key.keysym.scancode == SDL_SCANCODE_R) {
+            generate_new_stage();
+            return true;
         }
 
         {  //powerful slide (remove duplicate objects in the same row/column)
             if (evt.key.keysym.mod == KMOD_LSHIFT || evt.key.keysym.mod == KMOD_RSHIFT) {
+                auto checkPiece = [] (Piece& prevPiece, uint32_t row, uint32_t column) {
+                    if (board_state[row][column] == prevPiece) {
+                        board_state[row][column] = Empty;
+                    } else if (board_state[row][column] != Empty) {
+                        prevPiece = board_state[row][column];
+                    }
+                };
                 if (evt.key.keysym.scancode == SDL_SCANCODE_LEFT ||
                     evt.key.keysym.scancode == SDL_SCANCODE_RIGHT) {  //horizontal powerful slide
-                    for (uint32_t r = 0; r < 4; ++r) {
+                    for (uint32_t row = 0; row < board_size.y; ++row) {
+                        uint32_t column = 0;
                         Piece prevPiece = Empty;
-                        uint32_t c = 0;
-                        while (prevPiece == Empty && c < 4)
-                            prevPiece = board_state[r][c++];
-                        for (; c < 4; ++c) {
-                            if (board_state[r][c] != Empty) {
-                                if (board_state[r][c] == prevPiece) {
-                                    board_state[r][c] = Empty;
-                                } else {
-                                    prevPiece = board_state[r][c];
-                                }
-                            }
+                        while (prevPiece == Empty && column < board_size.x) {  //find first non-Empty piece
+                            prevPiece = board_state[row][column++];
+                        }
+                        for (; column < board_size.x; ++column) {
+                            checkPiece(prevPiece, row, column);
                         }
                     }
                 } else if (evt.key.keysym.scancode == SDL_SCANCODE_UP ||
                            evt.key.keysym.scancode == SDL_SCANCODE_DOWN) {  //vertical powerful slide
-                    for (uint32_t c = 0; c < 4; ++c) {
+                    for (uint32_t column = 0; column < board_size.x; ++column) {
+                        uint32_t row = 0;
                         Piece prevPiece = Empty;
-                        uint32_t r = 0;
-                        while (prevPiece == Empty && r < 4)
-                            prevPiece = board_state[r++][c];
-                        for (; r < 4; ++r) {
-                            if (board_state[r][c] != Empty) {
-                                if (board_state[r][c] == prevPiece) {
-                                    board_state[r][c] = Empty;
-                                } else {
-                                    prevPiece = board_state[r][c];
-                                }
-                            }
+                        while (prevPiece == Empty && row < board_size.y) {  //find first non-Empty piece
+                            prevPiece = board_state[row++][column];
+                        }
+                        for (; row < board_size.y; ++row) {
+                            checkPiece(prevPiece, row, column);
                         }
                     }
                 }
@@ -332,13 +277,14 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
         }
 
         {  //slide
+            //for directions should be handled in four different indexing
             if (evt.key.keysym.scancode == SDL_SCANCODE_LEFT) {
-                for (uint32_t r = 0; r < 4; ++r) {
-                    uint32_t head = 0;  // head of row r
-                    while (board_state[r][head] != Empty && head < 4) {
+                for (uint32_t r = 0; r < board_size.y; ++r) {
+                    uint32_t head = 0;
+                    while (board_state[r][head] != Empty && head < board_size.x) {  //find first Empty position
                         ++head;
                     }
-                    for (uint32_t c = head + 1; c < 4; ++c) {
+                    for (uint32_t c = head + 1; c < board_size.x; ++c) {
                         if (board_state[r][c] != Empty && c != head && board_state[r][head] == Empty) {
                             std::swap(board_state[r][head++], board_state[r][c]);
                         }
@@ -346,8 +292,8 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
                 }
                 return true;
             } else if (evt.key.keysym.scancode == SDL_SCANCODE_RIGHT) {
-                for (uint32_t r = 4; r-- > 0; ) {  //unsigned reverse index
-                    uint32_t head = 3;
+                for (uint32_t r = board_size.y; r-- > 0; ) {  //unsigned reverse traverse
+                    uint32_t head = board_size.x - 1;
                     while (board_state[r][head] != Empty && head > 0) {
                         --head;
                     }
@@ -359,12 +305,12 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
                 }
                 return true;
             } else if (evt.key.keysym.scancode == SDL_SCANCODE_UP) {
-                for (uint32_t c = 0; c < 4; ++c) {
+                for (uint32_t c = 0; c < board_size.x; ++c) {
                     uint32_t head = 0;
-                    while (board_state[head][c] != Empty && head < 4) {
+                    while (board_state[head][c] != Empty && head < board_size.y) {
                         ++head;
                     }
-                    for (uint32_t r = head + 1; r < 4; ++r) {
+                    for (uint32_t r = head + 1; r < board_size.y; ++r) {
                         if (board_state[r][c] != Empty && r != head && board_state[head][c] == Empty) {
                             std::swap(board_state[head++][c], board_state[r][c]);
                         }
@@ -372,8 +318,8 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
                 }
                 return true;
             } else if (evt.key.keysym.scancode == SDL_SCANCODE_DOWN) {
-                for (uint32_t c = 4; c-- > 0; ) {
-                    uint32_t head = 3;
+                for (uint32_t c = board_size.x; c-- > 0; ) {
+                    uint32_t head = board_size.y - 1;
                     while (board_state[head][c] != Empty && head > 0) {
                         --head;
                     }
@@ -387,83 +333,28 @@ bool Game::handle_event(SDL_Event const &evt, glm::uvec2 window_size) {
             }
         }
 	}
-	//if (evt.type == SDL_KEYDOWN && evt.key.repeat == 0) {
-		//if (evt.key.keysym.scancode == SDL_SCANCODE_LEFT) {
-			//if (cursor.x > 0) {
-				//cursor.x -= 1;
-			//}
-			//return true;
-		//} else if (evt.key.keysym.scancode == SDL_SCANCODE_RIGHT) {
-			//if (cursor.x + 1 < board_size.x) {
-				//cursor.x += 1;
-			//}
-			//return true;
-		//} else if (evt.key.keysym.scancode == SDL_SCANCODE_UP) {
-			//if (cursor.y + 1 < board_size.y) {
-				//cursor.y += 1;
-			//}
-			//return true;
-		//} else if (evt.key.keysym.scancode == SDL_SCANCODE_DOWN) {
-			//if (cursor.y > 0) {
-				//cursor.y -= 1;
-			//}
-			//return true;
-		//}
-	//}
 	return false;
 }
 
-// update is now useless
 void Game::update(float elapsed) {
-	//if the roll keys are pressed, rotate everything on the same row or column as the cursor:
-    /*
-	glm::quat dr = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-	float amt = elapsed * 1.0f;
-	if (controls.roll_left) {
-		dr = glm::angleAxis(amt, glm::vec3(0.0f, 1.0f, 0.0f)) * dr;
-	}
-	if (controls.roll_right) {
-		dr = glm::angleAxis(-amt, glm::vec3(0.0f, 1.0f, 0.0f)) * dr;
-	}
-	if (controls.roll_up) {
-		dr = glm::angleAxis(amt, glm::vec3(1.0f, 0.0f, 0.0f)) * dr;
-	}
-	if (controls.roll_down) {
-		dr = glm::angleAxis(-amt, glm::vec3(1.0f, 0.0f, 0.0f)) * dr;
-    }
-    //Only updates elements at the same row or column of the cursor.
-	if (dr != glm::quat()) {
-		for (uint32_t x = 0; x < board_size.x; ++x) {
-			glm::quat &r = board_rotations[cursor.y * board_size.x + x];
-			r = glm::normalize(dr * r);
-		}
-		for (uint32_t y = 0; y < board_size.y; ++y) {
-			if (y != cursor.y) {
-				glm::quat &r = board_rotations[y * board_size.x + cursor.x];
-				r = glm::normalize(dr * r);
-			}
-		}
-	}
-    */
-
-    // update positions of black/white pieces
-    uint32_t blackpieceIdx = 0;
-    uint32_t whitepieceIdx = 0;
-    for (uint32_t row = 0; row < 4; ++row) {
-        for (uint32_t column = 0; column < 4; ++column) {
+    //update positions of black/white pieces based on board_state
+    uint32_t blackIdx = 0;
+    uint32_t whiteIdx = 0;
+    for (uint32_t row = 0; row < board_size.y; ++row) {
+        for (uint32_t column = 0; column < board_size.x; ++column) {
             if (board_state[row][column] == Black) {  // blackpieces
-                blackpieces[blackpieceIdx].x = column;
-                blackpieces[blackpieceIdx].y = 3 - row;
-                ++blackpieceIdx;
+                blackpieces[blackIdx].x = column;
+                blackpieces[blackIdx].y = board_size.y - 1 - row;
+                ++blackIdx;
             } else if (board_state[row][column] == White) {  // whitepieces
-                whitepieces[whitepieceIdx].x = column;
-                whitepieces[whitepieceIdx].y = 3 - row;
-                ++whitepieceIdx;
+                whitepieces[whiteIdx].x = column;
+                whitepieces[whiteIdx].y = board_size.y - 1 - row;
+                ++whiteIdx;
             }
         }
     }
-    blackpieces.resize(blackpieceIdx);
-    whitepieces.resize(whitepieceIdx);
+    blackpieces.resize(blackIdx);
+    whitepieces.resize(whiteIdx);
 
     // check if player wins
     if (blackpieces.size() == 1 && whitepieces.size() == 1) {
@@ -534,15 +425,6 @@ void Game::draw(glm::uvec2 drawable_size) {
 					x+0.5f, y+0.5f,-0.5f, 1.0f
 				)
 			);
-			//draw_mesh(*board_meshes[y*board_size.x+x],
-				//glm::mat4(
-					//1.0f, 0.0f, 0.0f, 0.0f,
-					//0.0f, 1.0f, 0.0f, 0.0f,
-					//0.0f, 0.0f, 1.0f, 0.0f,
-					//x+0.5f, y+0.5f, 0.0f, 1.0f
-				//)
-				//* glm::mat4_cast(board_rotations[y*board_size.x+x])
-			//);
 		}
 	}
     for (auto& b : blackpieces) {
@@ -565,14 +447,6 @@ void Game::draw(glm::uvec2 drawable_size) {
             )
         );
     }
-	//draw_mesh(cursor_mesh,
-		//glm::mat4(
-			//1.0f, 0.0f, 0.0f, 0.0f,
-			//0.0f, 1.0f, 0.0f, 0.0f,
-			//0.0f, 0.0f, 1.0f, 0.0f,
-			//cursor.x+0.5f, cursor.y+0.5f, 0.0f, 1.0f
-		//)
-	//);
 
 
 	glUseProgram(0);
@@ -580,38 +454,42 @@ void Game::draw(glm::uvec2 drawable_size) {
 	GL_ERRORS();
 }
 
-void Game::generate() {
-    std::cout << "generate" << std::endl;
-    blackpieces.clear();
-    whitepieces.clear();
-
-    for (uint32_t r = 0; r < 4; ++r) {
-        for (uint32_t c = 0; c < 4; ++c) {
-            auto piece = mt() % 3;  //Empty, Black, White
-            if (piece == White) {
-                whitepieces.emplace_back(glm::vec2(r,c));
-            } else if (piece == Black) {
-                blackpieces.emplace_back(glm::vec2(r,c));
+void Game::generate_new_stage() {
+    { //set positions of pieces
+        blackpieces.clear();
+        whitepieces.clear();
+        for (uint32_t r = 0; r < board_size.y; ++r) {
+            for (uint32_t c = 0; c < board_size.x; ++c) {
+                auto piece = mt() % 3;  //Empty, Black, White
+                if (piece == White) {
+                    whitepieces.emplace_back(glm::vec2(r,c));
+                } else if (piece == Black) {
+                    blackpieces.emplace_back(glm::vec2(r,c));
+                }
             }
         }
     }
 
-    set_board_state();
-    game_state = GoOn;
-}
-
-void Game::set_board_state() {
-    memset(board_state, Empty, sizeof(board_state));
-    for (auto& b : blackpieces) {
-        uint32_t row = 3 - b.y, column = b.x;
-        board_state[row][column] = Black;
+    { //set board_state
+        memset(board_state, Empty, sizeof(board_state));  //zero-out the board_state
+        auto set_board_state = [&] (std::vector< glm::uvec2 >& piece_pos, Piece piece) {
+            for (auto& p : piece_pos) {
+                board_state[board_size.y - 1 - p.y][p.x] = piece;
+            }
+        };
+        set_board_state(blackpieces, Black);
+        set_board_state(whitepieces, White);
     }
-    for (auto& w : whitepieces) {
-        uint32_t row = 3 - w.y, column = w.x;
-        board_state[row][column] = White;
+
+    { //set game_state
+        game_state = GoOn;
+    }
+
+    //re-generate if the board is invalid
+    if (whitepieces.size() < 1 || blackpieces.size() < 1) {
+        generate_new_stage();
     }
 }
-
 
 
 //create and return an OpenGL vertex shader from source:

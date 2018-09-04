@@ -1,11 +1,11 @@
 # Game Information
 (Note: fill in this portion with information about your game.)
 
-Title: (TODO: your game's title)
+Title: Sliding Ball
 
-Author: (TODO: your name)
+Author: Yen-Hsiang, Huang
 
-Design Document: [TODO: name of design document](TODO: link to design document)
+Design Document: [Sliding Ball](http://graphics.cs.cmu.edu/courses/15-466-f18/game0-designs/guanghay/)
 
 Screen Shot:
 
