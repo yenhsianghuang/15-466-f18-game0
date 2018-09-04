@@ -1,5 +1,8 @@
 # Game Information
-Sliding Ball is an implementation of the [Sliding Ball](http://graphics.cs.cmu.edu/courses/15-466-f18/game0-designs/guanghay/). Most of the features are built as described in the document. One big difference is that when the player applies normal or powerful slide, all balls (instead of balls in a single line) are affected. (I would like to add a number on right side of the window, showing how many steps the player has used. Still trying to get texts work.)
+Sliding Ball is an implementation of the [Sliding Ball](http://graphics.cs.cmu.edu/courses/15-466-f18/game0-designs/guanghay/). Most of the features are built as described in the document with two big changes. (I would like to add a number on right side of the window, showing how many steps the player has used. Still trying to get texts work.)
+
+- When the player applies normal or powerful slide, all balls (instead of balls in a single line) are affected.
+- Powerful slide is **SHIFT + arror keys** because CTRL + arrows keys is used by OSX.
 
 Title: Sliding Ball
 
