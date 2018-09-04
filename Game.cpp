@@ -485,7 +485,7 @@ void Game::generate_new_stage() {
         game_state = GoOn;
     }
 
-    //re-generate if the board is invalid
+    //re-generate the game if current board is invalid
     if (whitepieces.size() < 1 || blackpieces.size() < 1) {
         generate_new_stage();
     }
