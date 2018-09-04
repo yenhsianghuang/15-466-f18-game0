@@ -13,11 +13,14 @@ Screen Shot:
 
 Difficulties Encountered:
 
-The most difficult part of this game is checking whether current game is solvable. Instead of coming up with a brilliant algorithm, I added a reset function that allows players to start a new game when they stuck. One thing I also want to mention is updating the board state. I stored the board state in a 2D matrix, and the indexing for update board state was different for four directions. It's simple but annoying.
+The most difficult part of this game is checking whether current game is solvable. Instead of coming up with a brilliant algorithm, I add a reset function that allows players to start a new game when they stuck.
+
+Another thing I want to mention is updating the board state. I maintain the board state in a 2D matrix, and the indexing for updating board state is different in four directions. It's simple but annoying.
 
 Good Code:
 
-The conditional recursive call at the end of generate_new_stage() function would be the highlight. Checking the validity is hard, as described before. Hence, I simply check for the number of white and black pieces to validate current board state. If the board is invalid, call itself to generate again!
+The conditional recursive call at the end of generate_new_stage() function would be the highlight. Checking the validity is hard, as described before. Hence, I simply check the number of white and black pieces to validate current board state. If the board is invalid, call itself to re-generate!
+
 This feature would barely be used since it's unlikely the random function generates either zero black or zero white piece; however, it avoids obvious invalid situation by very simple implementation.
 
 # Using This Base Code
